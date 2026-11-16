@@ -63,3 +63,8 @@ For **Direct Paste** (automatically sending `⌘V` into the active app) and **Pa
 | `⌫` / `⌘Z` | Delete selected clip / Undo delete |
 | Type any character | Instant type-to-search |
 | `Esc` | Clear search or dismiss shelf |
+
+## License
+
+Released under the [MIT License](LICENSE).
+
