@@ -158,6 +158,8 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
     public var headerColorRGB: RGBColor?
     public var isInHistory: Bool
     public var pinboardIDs: [UUID]
+    public var isSensitiveSecret: Bool
+    public var secretKind: String?
 
     public init(
         id: UUID = UUID(),
@@ -183,7 +185,9 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
         sourceAppName: String? = nil,
         headerColorRGB: RGBColor? = nil,
         isInHistory: Bool = true,
-        pinboardIDs: [UUID] = []
+        pinboardIDs: [UUID] = [],
+        isSensitiveSecret: Bool = false,
+        secretKind: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -209,6 +213,43 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
         self.headerColorRGB = headerColorRGB
         self.isInHistory = isInHistory
         self.pinboardIDs = pinboardIDs
+        self.isSensitiveSecret = isSensitiveSecret
+        self.secretKind = secretKind
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.type = try container.decode(ClipType.self, forKey: .type)
+        self.timestamp = try container.decode(Date.self, forKey: .timestamp)
+        self.customTitle = try container.decodeIfPresent(String.self, forKey: .customTitle)
+        self.textContent = try container.decodeIfPresent(String.self, forKey: .textContent)
+        self.urlString = try container.decodeIfPresent(String.self, forKey: .urlString)
+        self.linkTitle = try container.decodeIfPresent(String.self, forKey: .linkTitle)
+        self.linkDescription = try container.decodeIfPresent(String.self, forKey: .linkDescription)
+        self.hasLinkIcon = try container.decodeIfPresent(Bool.self, forKey: .hasLinkIcon) ?? false
+        self.hasLinkPreviewImage = try container.decodeIfPresent(Bool.self, forKey: .hasLinkPreviewImage) ?? false
+        self.parsedColor = try container.decodeIfPresent(ParsedColor.self, forKey: .parsedColor)
+        self.filePaths = try container.decodeIfPresent([String].self, forKey: .filePaths) ?? []
+        self.imageWidth = try container.decodeIfPresent(Int.self, forKey: .imageWidth)
+        self.imageHeight = try container.decodeIfPresent(Int.self, forKey: .imageHeight)
+        self.imageFormat = try container.decodeIfPresent(String.self, forKey: .imageFormat)
+        self.byteSize = try container.decodeIfPresent(Int64.self, forKey: .byteSize) ?? 0
+        self.hasRTF = try container.decodeIfPresent(Bool.self, forKey: .hasRTF) ?? false
+        self.hasHTML = try container.decodeIfPresent(Bool.self, forKey: .hasHTML) ?? false
+        self.contentHash = try container.decode(String.self, forKey: .contentHash)
+        self.sourceAppBundleID = try container.decodeIfPresent(String.self, forKey: .sourceAppBundleID)
+        self.sourceAppName = try container.decodeIfPresent(String.self, forKey: .sourceAppName)
+        self.headerColorRGB = try container.decodeIfPresent(RGBColor.self, forKey: .headerColorRGB)
+        self.isInHistory = try container.decodeIfPresent(Bool.self, forKey: .isInHistory) ?? true
+        self.pinboardIDs = try container.decodeIfPresent([UUID].self, forKey: .pinboardIDs) ?? []
+        self.isSensitiveSecret = try container.decodeIfPresent(Bool.self, forKey: .isSensitiveSecret) ?? false
+        self.secretKind = try container.decodeIfPresent(String.self, forKey: .secretKind)
+    }
+
+    public var hasDynamicPlaceholders: Bool {
+        guard !pinboardIDs.isEmpty, let text = textContent else { return false }
+        return SnippetExpander.containsPlaceholder(text)
     }
 
     public var headerTitle: String {
@@ -438,6 +479,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var soundEffectsEnabled: Bool
     public var moveDuplicatesToTop: Bool
     public var ignoreSensitiveContent: Bool
+    public var secretHandling: SecretHandlingMode
+    public var expandDynamicSnippets: Bool
     public var showMenuBarIcon: Bool
     public var menuBarIconStyle: MenuBarIconStyle
     public var retentionPolicy: RetentionPolicy
@@ -456,6 +499,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         soundEffectsEnabled: Bool = true,
         moveDuplicatesToTop: Bool = true,
         ignoreSensitiveContent: Bool = true,
+        secretHandling: SecretHandlingMode = .maskPreview,
+        expandDynamicSnippets: Bool = true,
         showMenuBarIcon: Bool = true,
         menuBarIconStyle: MenuBarIconStyle = .pasteboard,
         retentionPolicy: RetentionPolicy = .month,
@@ -473,6 +518,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.soundEffectsEnabled = soundEffectsEnabled
         self.moveDuplicatesToTop = moveDuplicatesToTop
         self.ignoreSensitiveContent = ignoreSensitiveContent
+        self.secretHandling = secretHandling
+        self.expandDynamicSnippets = expandDynamicSnippets
         self.showMenuBarIcon = showMenuBarIcon
         self.menuBarIconStyle = menuBarIconStyle
         self.retentionPolicy = retentionPolicy
@@ -493,6 +540,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.soundEffectsEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEffectsEnabled) ?? true
         self.moveDuplicatesToTop = try container.decodeIfPresent(Bool.self, forKey: .moveDuplicatesToTop) ?? true
         self.ignoreSensitiveContent = try container.decodeIfPresent(Bool.self, forKey: .ignoreSensitiveContent) ?? true
+        self.secretHandling = try container.decodeIfPresent(SecretHandlingMode.self, forKey: .secretHandling) ?? .maskPreview
+        self.expandDynamicSnippets = try container.decodeIfPresent(Bool.self, forKey: .expandDynamicSnippets) ?? true
         self.showMenuBarIcon = try container.decodeIfPresent(Bool.self, forKey: .showMenuBarIcon) ?? true
         self.menuBarIconStyle = try container.decodeIfPresent(MenuBarIconStyle.self, forKey: .menuBarIconStyle) ?? .pasteboard
         self.retentionPolicy = try container.decodeIfPresent(RetentionPolicy.self, forKey: .retentionPolicy) ?? .month

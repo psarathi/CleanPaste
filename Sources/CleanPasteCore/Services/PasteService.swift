@@ -58,6 +58,26 @@ public final class PasteService {
         return (result, result.unicodeScalars.count != text.unicodeScalars.count)
     }
 
+    public static func prepareTextForPaste(
+        item: ClipItem,
+        rawText: String,
+        expandDynamicSnippets: Bool,
+        targetBundleID: String?,
+        terminalSafePaste: Bool,
+        now: Date = Date(),
+        clipboardProvider: () -> String? = { nil }
+    ) -> (text: String, expandedSnippet: Bool, trimmedNewlines: Bool) {
+        var working = rawText
+        var expanded = false
+        if expandDynamicSnippets && !item.pinboardIDs.isEmpty && SnippetExpander.containsPlaceholder(working) {
+            let result = SnippetExpander.expand(working, now: now, clipboardProvider: clipboardProvider)
+            expanded = (result != working)
+            working = result
+        }
+        let sanitized = sanitizedTextForTarget(working, targetBundleID: targetBundleID, terminalSafePaste: terminalSafePaste)
+        return (sanitized.text, expanded, sanitized.trimmedNewlines)
+    }
+
     @discardableResult
     public func writeToPasteboard(
         item: ClipItem,
@@ -65,22 +85,33 @@ public final class PasteService {
         storage: StorageManager,
         monitor: ClipboardMonitor,
         targetBundleID: String? = nil,
-        terminalSafePaste: Bool = false
+        terminalSafePaste: Bool = false,
+        expandDynamicSnippets: Bool = false
     ) -> Bool {
         let pasteboard = NSPasteboard.general
+        let previousClipboardString = (expandDynamicSnippets && item.hasDynamicPlaceholders)
+            ? pasteboard.string(forType: .string)
+            : nil
         pasteboard.clearContents()
         var didTrimNewlines = false
 
         switch item.type {
         case .text:
-            let rawText = item.textContent
-            let sanitized = rawText.map {
-                Self.sanitizedTextForTarget($0, targetBundleID: targetBundleID, terminalSafePaste: terminalSafePaste)
+            let prepared = item.textContent.map {
+                Self.prepareTextForPaste(
+                    item: item,
+                    rawText: $0,
+                    expandDynamicSnippets: expandDynamicSnippets,
+                    targetBundleID: targetBundleID,
+                    terminalSafePaste: terminalSafePaste,
+                    clipboardProvider: { previousClipboardString }
+                )
             }
-            didTrimNewlines = sanitized?.trimmedNewlines ?? false
-            let effectiveText = sanitized?.text
+            didTrimNewlines = prepared?.trimmedNewlines ?? false
+            let didExpandSnippet = prepared?.expandedSnippet ?? false
+            let effectiveText = prepared?.text
 
-            if plainTextOnly || didTrimNewlines {
+            if plainTextOnly || didTrimNewlines || didExpandSnippet {
                 if let text = effectiveText {
                     pasteboard.setString(text, forType: .string)
                 }

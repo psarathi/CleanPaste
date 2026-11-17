@@ -25,24 +25,62 @@ struct CardBodyView: View {
 private struct TextCardBody: View {
     let item: ClipItem
     let storage: StorageManager
+    @State private var revealSecret: Bool = false
 
     var body: some View {
         let content = item.textContent ?? ""
+        let shouldMask = item.isSensitiveSecret && !revealSecret
+
         ZStack(alignment: .topLeading) {
-            if item.looksLikeCode {
-                Text(previewSnippet(content))
-                    .font(.system(size: 11.5, weight: .regular, design: .monospaced))
-                    .foregroundStyle(.primary.opacity(0.92))
-                    .lineSpacing(2.5)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            } else {
-                Text(previewSnippet(content))
-                    .font(.system(size: 12.5, weight: .regular))
-                    .foregroundStyle(.primary.opacity(0.92))
-                    .lineSpacing(3)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            Group {
+                if item.looksLikeCode || item.isSensitiveSecret {
+                    Text(previewSnippet(content))
+                        .font(.system(size: 11.5, weight: .regular, design: .monospaced))
+                        .foregroundStyle(.primary.opacity(0.92))
+                        .lineSpacing(2.5)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                } else {
+                    Text(previewSnippet(content))
+                        .font(.system(size: 12.5, weight: .regular))
+                        .foregroundStyle(.primary.opacity(0.92))
+                        .lineSpacing(3)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+            }
+            .blur(radius: shouldMask ? 7 : 0)
+            .opacity(shouldMask ? 0.45 : 1.0)
+
+            if item.isSensitiveSecret {
+                VStack(spacing: 6) {
+                    if shouldMask {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.orange)
+                        Text(item.secretKind ?? "Sensitive Secret")
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundStyle(.primary)
+                        Text("Masked for privacy")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        revealSecret.toggle()
+                    } label: {
+                        Label(
+                            revealSecret ? "Hide" : "Reveal",
+                            systemImage: revealSecret ? "eye.slash" : "eye"
+                        )
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor).opacity(0.92)))
+                        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.14), lineWidth: 0.75))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: shouldMask ? .center : .bottomTrailing)
             }
         }
         .padding(.horizontal, 12)

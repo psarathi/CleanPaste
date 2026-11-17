@@ -91,6 +91,7 @@ struct QuickLookPreviewView: View {
     @EnvironmentObject var appState: AppState
     var onClose: () -> Void
     @State private var forceMonospace: Bool = false
+    @State private var revealSecret: Bool = false
 
     var body: some View {
         if let item = appState.selectedItem {
@@ -116,6 +117,19 @@ struct QuickLookPreviewView: View {
                             .foregroundStyle(.white.opacity(0.84))
                     }
                     Spacer()
+                    if item.isSensitiveSecret {
+                        Button {
+                            revealSecret.toggle()
+                        } label: {
+                            Image(systemName: revealSecret ? "eye.slash.fill" : "eye.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(6)
+                                .background(Circle().fill(.white.opacity(revealSecret ? 0.30 : 0.14)))
+                        }
+                        .buttonStyle(.plain)
+                        .help(revealSecret ? "Mask Secret" : "Reveal Secret")
+                    }
                     if item.type == .text {
                         Button {
                             forceMonospace.toggle()
@@ -157,6 +171,30 @@ struct QuickLookPreviewView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                    }
+                    if item.type == .text || item.type == .link,
+                       let rawText = item.textContent ?? item.urlString,
+                       !rawText.isEmpty {
+                        let transforms = TextTransformService.availableTransforms(for: rawText, isLink: item.type == .link)
+                        Menu("Transform") {
+                            Menu("Transform & Paste") {
+                                ForEach(transforms) { transform in
+                                    Button(transform.rawValue) {
+                                        appState.pasteTransformed(item, transform: transform, pasteDirectly: true)
+                                    }
+                                }
+                            }
+                            Menu("Transform & Copy") {
+                                ForEach(transforms) { transform in
+                                    Button(transform.rawValue) {
+                                        appState.pasteTransformed(item, transform: transform, pasteDirectly: false)
+                                    }
+                                }
+                            }
+                        }
+                        .menuStyle(.borderedButton)
+                        .controlSize(.small)
+                        .fixedSize()
                     }
                     if item.type == .image {
                         Button("Save Image...") {
@@ -211,6 +249,9 @@ struct QuickLookPreviewView: View {
                     .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.32), radius: 22, y: 10)
+            .onChange(of: item.id) { _, _ in
+                revealSecret = false
+            }
         }
     }
 
@@ -218,16 +259,40 @@ struct QuickLookPreviewView: View {
     private func previewBody(for item: ClipItem) -> some View {
         switch item.type {
         case .text:
-            ScrollView {
-                Text(item.textContent ?? "")
-                    .font(
-                        (forceMonospace || item.looksLikeCode)
-                            ? .system(size: 13, design: .monospaced)
-                            : .system(size: 13.5)
-                    )
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(16)
+            let masked = item.isSensitiveSecret && !revealSecret
+            ZStack {
+                ScrollView {
+                    Text(item.textContent ?? "")
+                        .font(
+                            (forceMonospace || item.looksLikeCode || item.isSensitiveSecret)
+                                ? .system(size: 13, design: .monospaced)
+                                : .system(size: 13.5)
+                        )
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(16)
+                }
+                .blur(radius: masked ? 8 : 0)
+                .opacity(masked ? 0.35 : 1.0)
+
+                if masked {
+                    VStack(spacing: 10) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.orange)
+                        Text(item.secretKind ?? "Sensitive Secret")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("Masked for privacy. Click Reveal to inspect or press Return to paste.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Button("Reveal Secret") {
+                            revealSecret = true
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(20)
+                }
             }
 
         case .image:

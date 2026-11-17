@@ -325,7 +325,8 @@ public final class AppState: ObservableObject {
             storage: storage,
             monitor: monitor,
             targetBundleID: targetBundleID,
-            terminalSafePaste: settings.terminalSafePaste
+            terminalSafePaste: settings.terminalSafePaste,
+            expandDynamicSnippets: settings.expandDynamicSnippets
         )
         SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
 
@@ -343,12 +344,40 @@ public final class AppState: ObservableObject {
         onRequestDismissAndPaste?(shouldCmdV)
     }
 
+    public func pasteTransformed(_ item: ClipItem, transform: ClipTransform, pasteDirectly: Bool = true) {
+        let raw = item.textContent ?? item.urlString ?? ""
+        guard let transformed = TextTransformService.apply(transform, to: raw) else {
+            showToast("Cannot apply \(transform.rawValue)")
+            return
+        }
+        let targetBundleID = pasteDirectly ? targetBundleIDProvider?() : nil
+        let sanitized = PasteService.sanitizedTextForTarget(
+            transformed,
+            targetBundleID: targetBundleID,
+            terminalSafePaste: settings.terminalSafePaste
+        )
+        PasteService.shared.writeCustomString(sanitized.text, monitor: monitor)
+        SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
+
+        if pasteDirectly {
+            refreshAccessibilityStatus()
+            let shouldCmdV = settings.directPaste && accessibilityGranted
+            if !shouldCmdV {
+                showToast("Copied (\(transform.rawValue))")
+            }
+            onRequestDismissAndPaste?(shouldCmdV)
+        } else {
+            showToast("Copied (\(transform.rawValue))")
+        }
+    }
+
     public func copyItem(_ item: ClipItem, plainTextOnly: Bool = false) {
         PasteService.shared.writeToPasteboard(
             item: item,
             plainTextOnly: plainTextOnly,
             storage: storage,
-            monitor: monitor
+            monitor: monitor,
+            expandDynamicSnippets: settings.expandDynamicSnippets
         )
         SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
         showToast(plainTextOnly ? "Copied as Plain Text" : "Copied to Clipboard")
@@ -509,6 +538,9 @@ public final class AppState: ObservableObject {
             items[idx].type = .text
             items[idx].parsedColor = nil
         }
+        let detectedSecret = (settings.secretHandling == .off) ? nil : SecretDetector.detectSecretKind(in: newText)
+        items[idx].isSensitiveSecret = (settings.secretHandling == .maskPreview && detectedSecret != nil)
+        items[idx].secretKind = detectedSecret
         items[idx].contentHash = monitor.sha256Hex(Data(("text:" + newText).utf8))
         persist()
     }

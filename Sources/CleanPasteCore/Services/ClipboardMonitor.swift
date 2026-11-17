@@ -108,7 +108,8 @@ public final class ClipboardMonitor {
             from: pasteboard,
             sourceBundleID: bundleID,
             sourceAppName: appName,
-            ignoreSensitive: settings.ignoreSensitiveContent
+            ignoreSensitive: settings.ignoreSensitiveContent,
+            secretHandling: settings.secretHandling
         ) {
             onCapture?(payload)
         }
@@ -118,7 +119,8 @@ public final class ClipboardMonitor {
         from pasteboard: PasteboardReadable,
         sourceBundleID: String?,
         sourceAppName: String?,
-        ignoreSensitive: Bool = true
+        ignoreSensitive: Bool = true,
+        secretHandling: SecretHandlingMode = .maskPreview
     ) -> CapturedPayload? {
         if ignoreSensitive {
             let types = Set(pasteboard.pasteboardTypes.map { $0.rawValue })
@@ -211,6 +213,10 @@ public final class ClipboardMonitor {
 
         // 5. Check Text (Plain / RTF / HTML)
         if let plainText, !plainText.isEmpty {
+            let detectedSecretKind = (secretHandling == .off) ? nil : SecretDetector.detectSecretKind(in: plainText)
+            if secretHandling == .skipCapture && detectedSecretKind != nil {
+                return nil
+            }
             let rtfData = pasteboard.data(forType: .rtf)
             let htmlData = pasteboard.data(forType: .html)
             let hash = sha256Hex(Data(("text:" + plainText).utf8))
@@ -223,7 +229,9 @@ public final class ClipboardMonitor {
                 contentHash: hash,
                 sourceAppBundleID: sourceBundleID,
                 sourceAppName: sourceAppName,
-                headerColorRGB: headerColor
+                headerColorRGB: headerColor,
+                isSensitiveSecret: (secretHandling == .maskPreview && detectedSecretKind != nil),
+                secretKind: detectedSecretKind
             )
             return CapturedPayload(item: item, imageData: nil, rtfData: rtfData, htmlData: htmlData)
         }

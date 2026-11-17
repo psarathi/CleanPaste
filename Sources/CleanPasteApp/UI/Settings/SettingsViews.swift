@@ -104,6 +104,11 @@ struct GeneralSettingsView: View {
                     set: { val in appState.updateSettings { $0.terminalSafePaste = val } }
                 ))
 
+                Toggle("Expand dynamic Pinboard snippets ({{date}}, {{time}}, {{clipboard}})", isOn: Binding(
+                    get: { appState.settings.expandDynamicSnippets },
+                    set: { val in appState.updateSettings { $0.expandDynamicSnippets = val } }
+                ))
+
                 Toggle("Always paste as plain text", isOn: Binding(
                     get: { appState.settings.pasteAsPlainTextByDefault },
                     set: { val in appState.updateSettings { $0.pasteAsPlainTextByDefault = val } }
@@ -388,6 +393,15 @@ struct RulesSettingsView: View {
                 Text("Automatically skips clipboard content marked concealed or transient by password managers.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Picker("Detected secrets (API keys, tokens, PEM)", selection: Binding(
+                    get: { appState.settings.secretHandling },
+                    set: { val in appState.updateSettings { $0.secretHandling = val } }
+                )) {
+                    ForEach(SecretHandlingMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
             }
 
             Section("Excluded Applications") {

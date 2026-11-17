@@ -91,6 +91,20 @@ struct ClipCardView: View {
 
                 Spacer(minLength: 4)
 
+                if item.isSensitiveSecret {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                        .help("Sensitive secret detected")
+                }
+
+                if item.hasDynamicPlaceholders && appState.settings.expandDynamicSnippets {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.accentColor)
+                        .help("Dynamic snippet placeholders active")
+                }
+
                 if !pinnedBoards.isEmpty {
                     HStack(spacing: 3) {
                         ForEach(pinnedBoards.prefix(4)) { board in
@@ -187,6 +201,31 @@ struct ClipCardView: View {
             appState.copyItem(item, plainTextOnly: false)
         } label: {
             Label("Copy to Clipboard", systemImage: "doc.on.doc")
+        }
+
+        if item.type == .text || item.type == .link,
+           let rawText = item.textContent ?? item.urlString,
+           !rawText.isEmpty {
+            let transforms = TextTransformService.availableTransforms(for: rawText, isLink: item.type == .link)
+            Menu {
+                ForEach(transforms) { transform in
+                    Button(transform.rawValue) {
+                        appState.pasteTransformed(item, transform: transform, pasteDirectly: true)
+                    }
+                }
+            } label: {
+                Label("Transform & Paste", systemImage: "wand.and.stars")
+            }
+
+            Menu {
+                ForEach(transforms) { transform in
+                    Button(transform.rawValue) {
+                        appState.pasteTransformed(item, transform: transform, pasteDirectly: false)
+                    }
+                }
+            } label: {
+                Label("Transform & Copy", systemImage: "doc.badge.gearshape")
+            }
         }
 
         if item.type == .color, let color = item.parsedColor {

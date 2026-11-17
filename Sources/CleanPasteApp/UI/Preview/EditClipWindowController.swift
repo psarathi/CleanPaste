@@ -92,9 +92,14 @@ private struct EditTextClipView: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
 
             HStack {
-                Text("\(text.count) characters")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(text.count) characters")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Pinned snippets support {{date}}, {{time}}, {{datetime}}, {{uuid}}, {{clipboard}}")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
                 Spacer()
                 Button("Cancel", role: .cancel, action: onCancel)
                     .keyboardShortcut(.escape, modifiers: [])

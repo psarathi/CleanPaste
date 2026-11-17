@@ -12,11 +12,12 @@ A native macOS clipboard manager built with SwiftUI and AppKit, featuring a fros
   - **Colors:** Detects Hex (`#RGB`, `#RRGGBB`, `#RRGGBBAA`), `rgb()`/`rgba()`, and `hsl()`/`hsla()`, displaying live color swatches with one-click Hex, RGB, HSL, and SwiftUI `Color` copy actions.
   - **Files:** Displays Finder icons and Quick Look thumbnails (`QLThumbnailGenerator`) with multi-file badges and Reveal in Finder.
 - **App-Colored Card Headers:** Samples the source app's icon to derive balanced header colors with live relative timestamps and `⌘1`–`⌘9` quick-paste badges.
-- **Pinboards:** Organize permanent clips into color-coded tabs above the shelf; drag cards onto tabs to pin them, or drag cards directly into external apps. Pinned items never expire with history retention rules.
+- **Pinboards & Dynamic Snippets:** Organize permanent clips into color-coded tabs above the shelf; drag cards onto tabs to pin them, or drag cards directly into external apps. Pinned items never expire with history retention rules and support paste-time placeholders (`{{date}}`, `{{time}}`, `{{datetime}}`, `{{uuid}}`, `{{clipboard}}`).
+- **One-Click Transforms:** Transform & Paste or Transform & Copy right from card context menus or Quick Look—including `UPPERCASE`/`lowercase`/`Title Case`/`camelCase`/`snake_case`, Trim Whitespace, Join Lines, Pretty/Minify JSON, Base64 Encode/Decode, and stripping URL tracking query parameters.
 - **Paste Stack (`⇧⌘C`):** Queue multiple copied snippets in FIFO or LIFO order with a shelf strip and floating HUD, auto-advancing on `⌘V` when Accessibility is granted (or via `⌥⌘V`).
 - **Quick Look & Editing:** Press `Space` to preview any clip (`⌘E` to edit text, `⌘R` to rename, `⌫` to delete with `⌘Z` undo).
 - **Direct Paste & Terminal Safety:** Supports optional single-click direct paste (in addition to `Return`, `⌘1–9`, and double-click) plus **Terminal-safe paste**, stripping trailing `\r`/`\n` when pasting into Terminal, iTerm2, Warp, WezTerm, Alacritty, kitty, Ghostty, or Hyper.
-- **Privacy & Timed Pause:** Skips concealed/transient password-manager clipboard types (`org.nspasteboard.ConcealedType`, `TransientType`, etc.), supports a customizable excluded-apps list, and lets you pause recording indefinitely or for **15 minutes / 1 hour** with automatic resume.
+- **Privacy, Secret Masking & Timed Pause:** Skips concealed/transient password-manager clipboard types (`org.nspasteboard.ConcealedType`, `TransientType`, etc.), detects API keys/tokens/JWTs/PEM keys (`Mask Preview`, `Ignore & Skip`, or `Off`), supports an excluded-apps list, and lets you pause recording indefinitely or for **15 minutes / 1 hour** with automatic resume.
 - **Menu Bar Icon Switcher:** Includes 7 selectable menu bar icon styles (`PasteBoard`, `Coral Cards`, `Spectrum Fan`, `Sapphire Mini`, `Teal Clipboard`, `Indigo & Cyan`, and `Monochrome`).
 
 ## Requirements
