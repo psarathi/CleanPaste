@@ -41,8 +41,14 @@ public final class AppState: ObservableObject {
     @Published public var isPaused: Bool = false {
         didSet {
             monitor.isPaused = isPaused
+            if !isPaused {
+                pauseUntil = nil
+                pauseTimer?.invalidate()
+                pauseTimer = nil
+            }
         }
     }
+    @Published public var pauseUntil: Date? = nil
     @Published public var isPasteStackActive: Bool = false {
         didSet {
             if backgroundServicesEnabled {
@@ -67,9 +73,11 @@ public final class AppState: ObservableObject {
     private let backgroundServicesEnabled: Bool
     private var undoStack: [DeletedItemSnapshot] = []
     private var toastWorkItem: DispatchWorkItem?
+    private var pauseTimer: Timer?
     private var suppressStackAdvanceUntil: Date = .distantPast
 
     /// Callbacks wired by ShelfWindowController / UI
+    public var targetBundleIDProvider: (() -> String?)?
     public var onRequestToggleShelf: (() -> Void)?
     public var onRequestDismissAndPaste: ((_ shouldSimulateCmdV: Bool) -> Void)?
     public var onRequestOpenQuickLook: (() -> Void)?
@@ -274,13 +282,50 @@ public final class AppState: ObservableObject {
 
     // MARK: - Paste & Copy Actions
 
+    public func pause(for duration: TimeInterval? = nil) {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        isPaused = true
+
+        if let duration, duration > 0 {
+            let until = Date().addingTimeInterval(duration)
+            pauseUntil = until
+            let timer = Timer(timeInterval: duration, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.resumeRecording()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            pauseTimer = timer
+
+            let mins = max(1, Int(round(duration / 60)))
+            showToast(mins >= 60 ? "Paused for \(mins / 60)h" : "Paused for \(mins)m")
+        } else {
+            pauseUntil = nil
+            showToast("Recording Paused")
+        }
+    }
+
+    public func resumeRecording() {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        pauseUntil = nil
+        if isPaused {
+            isPaused = false
+            showToast("Recording Resumed")
+        }
+    }
+
     public func pasteItem(_ item: ClipItem, plainTextOnly: Bool? = nil, pasteDirectly: Bool = true) {
         let stripFormatting = plainTextOnly ?? settings.pasteAsPlainTextByDefault
-        PasteService.shared.writeToPasteboard(
+        let targetBundleID = pasteDirectly ? targetBundleIDProvider?() : nil
+        let didTrimNewline = PasteService.shared.writeToPasteboard(
             item: item,
             plainTextOnly: stripFormatting,
             storage: storage,
-            monitor: monitor
+            monitor: monitor,
+            targetBundleID: targetBundleID,
+            terminalSafePaste: settings.terminalSafePaste
         )
         SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
 
@@ -289,6 +334,8 @@ public final class AppState: ObservableObject {
         if !shouldCmdV {
             if pasteDirectly && settings.directPaste && !accessibilityGranted {
                 showToast("Copied — Re-enable CleanPaste in Accessibility")
+            } else if didTrimNewline {
+                showToast("Copied (trimmed trailing newline)")
             } else {
                 showToast(stripFormatting ? "Copied as Plain Text" : "Copied to Clipboard")
             }

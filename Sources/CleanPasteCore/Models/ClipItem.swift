@@ -432,6 +432,8 @@ public enum MenuBarIconStyle: String, Codable, CaseIterable, Identifiable, Senda
 
 public struct AppSettings: Codable, Equatable, Sendable {
     public var directPaste: Bool
+    public var singleClickToPaste: Bool
+    public var terminalSafePaste: Bool
     public var pasteAsPlainTextByDefault: Bool
     public var soundEffectsEnabled: Bool
     public var moveDuplicatesToTop: Bool
@@ -448,6 +450,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     public init(
         directPaste: Bool = true,
+        singleClickToPaste: Bool = false,
+        terminalSafePaste: Bool = true,
         pasteAsPlainTextByDefault: Bool = false,
         soundEffectsEnabled: Bool = true,
         moveDuplicatesToTop: Bool = true,
@@ -463,6 +467,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         pasteNextShortcut: ShortcutSpec = .defaultPasteNext
     ) {
         self.directPaste = directPaste
+        self.singleClickToPaste = singleClickToPaste
+        self.terminalSafePaste = terminalSafePaste
         self.pasteAsPlainTextByDefault = pasteAsPlainTextByDefault
         self.soundEffectsEnabled = soundEffectsEnabled
         self.moveDuplicatesToTop = moveDuplicatesToTop
@@ -481,6 +487,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.directPaste = try container.decodeIfPresent(Bool.self, forKey: .directPaste) ?? true
+        self.singleClickToPaste = try container.decodeIfPresent(Bool.self, forKey: .singleClickToPaste) ?? false
+        self.terminalSafePaste = try container.decodeIfPresent(Bool.self, forKey: .terminalSafePaste) ?? true
         self.pasteAsPlainTextByDefault = try container.decodeIfPresent(Bool.self, forKey: .pasteAsPlainTextByDefault) ?? false
         self.soundEffectsEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEffectsEnabled) ?? true
         self.moveDuplicatesToTop = try container.decodeIfPresent(Bool.self, forKey: .moveDuplicatesToTop) ?? true

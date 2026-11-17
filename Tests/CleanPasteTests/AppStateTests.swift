@@ -176,5 +176,61 @@ final class AppStateTests: XCTestCase {
         XCTAssertFalse(decoded.directPaste)
         XCTAssertFalse(decoded.soundEffectsEnabled)
         XCTAssertEqual(decoded.menuBarIconStyle, .pasteboard)
+        XCTAssertFalse(decoded.singleClickToPaste)
+        XCTAssertTrue(decoded.terminalSafePaste)
+    }
+
+    func testTerminalSafePasteTrimsTrailingNewlinesOnlyForTerminals() {
+        let term = PasteService.sanitizedTextForTarget(
+            "ls -la\n\r\n",
+            targetBundleID: "com.apple.Terminal",
+            terminalSafePaste: true
+        )
+        XCTAssertEqual(term.text, "ls -la")
+        XCTAssertTrue(term.trimmedNewlines)
+
+        let iterm = PasteService.sanitizedTextForTarget(
+            "echo 1\necho 2\n",
+            targetBundleID: "com.googlecode.iterm2",
+            terminalSafePaste: true
+        )
+        XCTAssertEqual(iterm.text, "echo 1\necho 2")
+        XCTAssertTrue(iterm.trimmedNewlines)
+
+        let notes = PasteService.sanitizedTextForTarget(
+            "ls -la\n",
+            targetBundleID: "com.apple.Notes",
+            terminalSafePaste: true
+        )
+        XCTAssertEqual(notes.text, "ls -la\n")
+        XCTAssertFalse(notes.trimmedNewlines)
+
+        let disabled = PasteService.sanitizedTextForTarget(
+            "ls -la\n",
+            targetBundleID: "com.apple.Terminal",
+            terminalSafePaste: false
+        )
+        XCTAssertEqual(disabled.text, "ls -la\n")
+        XCTAssertFalse(disabled.trimmedNewlines)
+    }
+
+    func testTimedPauseSetsAndAutoResumes() {
+        appState.pause(for: 0.08)
+        XCTAssertTrue(appState.isPaused)
+        XCTAssertNotNil(appState.pauseUntil)
+
+        let deadline = Date().addingTimeInterval(6.0)
+        while appState.isPaused && Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertFalse(appState.isPaused)
+        XCTAssertNil(appState.pauseUntil)
+
+        appState.pause(for: 60)
+        XCTAssertTrue(appState.isPaused)
+        XCTAssertNotNil(appState.pauseUntil)
+        appState.resumeRecording()
+        XCTAssertFalse(appState.isPaused)
+        XCTAssertNil(appState.pauseUntil)
     }
 }

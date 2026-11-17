@@ -146,17 +146,20 @@ struct ClipCardView: View {
             isHovered = hovering
         }
         .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-        .onTapGesture(count: 2) {
-            appState.selectedItemID = item.id
-            let shiftHeld = NSEvent.modifierFlags.contains(.shift)
-            appState.pasteItem(item, plainTextOnly: shiftHeld ? true : nil, pasteDirectly: true)
-        }
-        .onTapGesture(count: 1) {
-            appState.selectedItemID = item.id
-            if appState.isQuickLookOpen {
-                appState.onRequestOpenQuickLook?()
-            }
-        }
+        .modifier(CardTapGestureModifier(
+            singleClickToPaste: appState.settings.singleClickToPaste,
+            onSelect: {
+                appState.selectedItemID = item.id
+                if appState.isQuickLookOpen {
+                    appState.onRequestOpenQuickLook?()
+                }
+            },
+            onPaste: { shiftHeld in
+                appState.selectedItemID = item.id
+                appState.pasteItem(item, plainTextOnly: shiftHeld ? true : nil, pasteDirectly: true)
+            },
+            isQuickLookOpen: appState.isQuickLookOpen
+        ))
         .onDrag {
             DragCoordinator.shared.draggingItemID = item.id
             return makeDragItemProvider()
@@ -331,5 +334,34 @@ struct ClipCardView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: now)
+    }
+}
+
+private struct CardTapGestureModifier: ViewModifier {
+    let singleClickToPaste: Bool
+    let onSelect: () -> Void
+    let onPaste: (Bool) -> Void
+    let isQuickLookOpen: Bool
+
+    func body(content: Content) -> some View {
+        if singleClickToPaste {
+            content
+                .onTapGesture(count: 1) {
+                    let mods = NSEvent.modifierFlags
+                    if isQuickLookOpen || mods.contains(.option) {
+                        onSelect()
+                    } else {
+                        onPaste(mods.contains(.shift))
+                    }
+                }
+        } else {
+            content
+                .onTapGesture(count: 2) {
+                    onPaste(NSEvent.modifierFlags.contains(.shift))
+                }
+                .onTapGesture(count: 1) {
+                    onSelect()
+                }
+        }
     }
 }

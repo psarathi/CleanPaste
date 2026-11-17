@@ -93,14 +93,15 @@ struct ShelfHeaderBar: View {
 
                 if appState.isPaused {
                     Button {
-                        appState.isPaused = false
-                        appState.showToast("Recording Resumed")
+                        appState.resumeRecording()
                     } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "pause.circle.fill")
-                                .font(.system(size: 12))
-                            Text("Paused")
-                                .font(.system(size: 11.5, weight: .semibold))
+                        TimelineView(.periodic(from: .now, by: 30)) { context in
+                            HStack(spacing: 5) {
+                                Image(systemName: "pause.circle.fill")
+                                    .font(.system(size: 12))
+                                Text(pausedBadgeLabel(now: context.date))
+                                    .font(.system(size: 11.5, weight: .semibold))
+                            }
                         }
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 9)
@@ -143,13 +144,27 @@ struct ShelfHeaderBar: View {
                         )
                     }
 
-                    Button {
-                        appState.isPaused.toggle()
-                    } label: {
-                        Label(
-                            appState.isPaused ? "Resume Recording" : "Pause Recording",
-                            systemImage: appState.isPaused ? "play.circle" : "pause.circle"
-                        )
+                    if appState.isPaused {
+                        Button {
+                            appState.resumeRecording()
+                        } label: {
+                            Label("Resume Recording", systemImage: "play.circle")
+                        }
+                    } else {
+                        Menu {
+                            Button("Pause for 15 Minutes") {
+                                appState.pause(for: 15 * 60)
+                            }
+                            Button("Pause for 1 Hour") {
+                                appState.pause(for: 60 * 60)
+                            }
+                            Divider()
+                            Button("Pause Until Resumed") {
+                                appState.pause(for: nil)
+                            }
+                        } label: {
+                            Label("Pause Recording", systemImage: "pause.circle")
+                        }
                     }
 
                     Divider()
@@ -398,5 +413,12 @@ struct ShelfHeaderBar: View {
                 appState.deletePinboard(board.id)
             }
         }
+    }
+
+    private func pausedBadgeLabel(now: Date) -> String {
+        guard let until = appState.pauseUntil else { return "Paused" }
+        let remaining = max(0, until.timeIntervalSince(now))
+        let mins = Int(ceil(remaining / 60))
+        return mins > 0 ? "Paused • \(mins)m" : "Paused"
     }
 }

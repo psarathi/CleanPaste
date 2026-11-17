@@ -97,13 +97,39 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let pauseItem = NSMenuItem(
-            title: appState.isPaused ? "Resume Recording" : "Pause Recording",
-            action: #selector(togglePauseAction),
-            keyEquivalent: ""
-        )
-        pauseItem.target = self
-        menu.addItem(pauseItem)
+        if appState.isPaused {
+            var title = "Resume Recording"
+            if let until = appState.pauseUntil {
+                let mins = max(1, Int(ceil(until.timeIntervalSinceNow / 60)))
+                title += " (\(mins)m remaining)"
+            }
+            let resumeItem = NSMenuItem(
+                title: title,
+                action: #selector(resumePauseAction),
+                keyEquivalent: ""
+            )
+            resumeItem.target = self
+            menu.addItem(resumeItem)
+        } else {
+            let pauseItem = NSMenuItem(
+                title: "Pause Recording",
+                action: #selector(pauseIndefinitelyAction),
+                keyEquivalent: ""
+            )
+            pauseItem.target = self
+            menu.addItem(pauseItem)
+
+            let pauseForMenuItem = NSMenuItem(title: "Pause For", action: nil, keyEquivalent: "")
+            let pauseSubmenu = NSMenu()
+            let pause15 = NSMenuItem(title: "15 Minutes", action: #selector(pause15MinAction), keyEquivalent: "")
+            pause15.target = self
+            let pause60 = NSMenuItem(title: "1 Hour", action: #selector(pause1HourAction), keyEquivalent: "")
+            pause60.target = self
+            pauseSubmenu.addItem(pause15)
+            pauseSubmenu.addItem(pause60)
+            pauseForMenuItem.submenu = pauseSubmenu
+            menu.addItem(pauseForMenuItem)
+        }
 
         let clearItem = NSMenuItem(
             title: "Clear Clipboard History",
@@ -169,8 +195,20 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         appState.pasteItem(clip, plainTextOnly: false, pasteDirectly: true)
     }
 
-    @objc private func togglePauseAction() {
-        appState.isPaused.toggle()
+    @objc private func resumePauseAction() {
+        appState.resumeRecording()
+    }
+
+    @objc private func pauseIndefinitelyAction() {
+        appState.pause(for: nil)
+    }
+
+    @objc private func pause15MinAction() {
+        appState.pause(for: 15 * 60)
+    }
+
+    @objc private func pause1HourAction() {
+        appState.pause(for: 60 * 60)
     }
 
     @objc private func clearHistoryAction() {

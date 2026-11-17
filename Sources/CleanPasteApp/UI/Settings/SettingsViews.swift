@@ -30,7 +30,7 @@ struct SettingsRootView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 560, height: 470)
+        .frame(width: 560, height: 510)
     }
 }
 
@@ -93,6 +93,16 @@ struct GeneralSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                Toggle("Single-click card to paste immediately (Option-click to select)", isOn: Binding(
+                    get: { appState.settings.singleClickToPaste },
+                    set: { val in appState.updateSettings { $0.singleClickToPaste = val } }
+                ))
+
+                Toggle("Terminal-safe paste (strip trailing newlines in Terminal/iTerm2)", isOn: Binding(
+                    get: { appState.settings.terminalSafePaste },
+                    set: { val in appState.updateSettings { $0.terminalSafePaste = val } }
+                ))
 
                 Toggle("Always paste as plain text", isOn: Binding(
                     get: { appState.settings.pasteAsPlainTextByDefault },

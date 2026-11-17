@@ -15,7 +15,8 @@ A native macOS clipboard manager built with SwiftUI and AppKit, featuring a fros
 - **Pinboards:** Organize permanent clips into color-coded tabs above the shelf; drag cards onto tabs to pin them, or drag cards directly into external apps. Pinned items never expire with history retention rules.
 - **Paste Stack (`⇧⌘C`):** Queue multiple copied snippets in FIFO or LIFO order with a shelf strip and floating HUD, auto-advancing on `⌘V` when Accessibility is granted (or via `⌥⌘V`).
 - **Quick Look & Editing:** Press `Space` to preview any clip (`⌘E` to edit text, `⌘R` to rename, `⌫` to delete with `⌘Z` undo).
-- **Privacy Controls:** Skips concealed/transient password-manager clipboard types (`org.nspasteboard.ConcealedType`, `TransientType`, etc.) and supports a customizable excluded-apps list.
+- **Direct Paste & Terminal Safety:** Supports optional single-click direct paste (in addition to `Return`, `⌘1–9`, and double-click) plus **Terminal-safe paste**, stripping trailing `\r`/`\n` when pasting into Terminal, iTerm2, Warp, WezTerm, Alacritty, kitty, Ghostty, or Hyper.
+- **Privacy & Timed Pause:** Skips concealed/transient password-manager clipboard types (`org.nspasteboard.ConcealedType`, `TransientType`, etc.), supports a customizable excluded-apps list, and lets you pause recording indefinitely or for **15 minutes / 1 hour** with automatic resume.
 - **Menu Bar Icon Switcher:** Includes 7 selectable menu bar icon styles (`PasteBoard`, `Coral Cards`, `Spectrum Fan`, `Sapphire Mini`, `Teal Clipboard`, `Indigo & Cyan`, and `Monochrome`).
 
 ## Requirements

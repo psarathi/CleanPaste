@@ -24,30 +24,75 @@ public final class PasteService {
         }
     }
 
+    public static let terminalBundleIDs: Set<String> = [
+        "com.apple.Terminal",
+        "com.googlecode.iterm2",
+        "dev.warp.Warp-Stable",
+        "dev.warp.Warp",
+        "com.github.wez.wezterm",
+        "io.alacritty",
+        "org.alacritty",
+        "net.kovidgoyal.kitty",
+        "com.mitchellh.ghostty",
+        "co.zeit.hyper",
+        "co.vercel.hyper"
+    ]
+
+    public static func isTerminalApp(bundleID: String?) -> Bool {
+        guard let bundleID else { return false }
+        return terminalBundleIDs.contains(bundleID)
+    }
+
+    public static func sanitizedTextForTarget(
+        _ text: String,
+        targetBundleID: String?,
+        terminalSafePaste: Bool
+    ) -> (text: String, trimmedNewlines: Bool) {
+        guard terminalSafePaste, isTerminalApp(bundleID: targetBundleID) else {
+            return (text, false)
+        }
+        var result = text
+        while let last = result.unicodeScalars.last, last == "\n" || last == "\r" {
+            result.unicodeScalars.removeLast()
+        }
+        return (result, result.unicodeScalars.count != text.unicodeScalars.count)
+    }
+
+    @discardableResult
     public func writeToPasteboard(
         item: ClipItem,
         plainTextOnly: Bool,
         storage: StorageManager,
-        monitor: ClipboardMonitor
-    ) {
+        monitor: ClipboardMonitor,
+        targetBundleID: String? = nil,
+        terminalSafePaste: Bool = false
+    ) -> Bool {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
+        var didTrimNewlines = false
 
         switch item.type {
         case .text:
-            if plainTextOnly {
-                if let text = item.textContent {
+            let rawText = item.textContent
+            let sanitized = rawText.map {
+                Self.sanitizedTextForTarget($0, targetBundleID: targetBundleID, terminalSafePaste: terminalSafePaste)
+            }
+            didTrimNewlines = sanitized?.trimmedNewlines ?? false
+            let effectiveText = sanitized?.text
+
+            if plainTextOnly || didTrimNewlines {
+                if let text = effectiveText {
                     pasteboard.setString(text, forType: .string)
                 }
             } else {
                 var types: [NSPasteboard.PasteboardType] = []
-                if item.textContent != nil { types.append(.string) }
+                if effectiveText != nil { types.append(.string) }
                 let rtfData = item.hasRTF ? storage.loadRTFData(for: item.id) : nil
                 let htmlData = item.hasHTML ? storage.loadHTMLData(for: item.id) : nil
                 if rtfData != nil { types.append(.rtf) }
                 if htmlData != nil { types.append(.html) }
                 pasteboard.declareTypes(types, owner: nil)
-                if let text = item.textContent {
+                if let text = effectiveText {
                     pasteboard.setString(text, forType: .string)
                 }
                 if let rtfData {
@@ -88,6 +133,7 @@ public final class PasteService {
         }
 
         monitor.markInternalWrite(changeCount: pasteboard.changeCount)
+        return didTrimNewlines
     }
 
     public func writeCustomString(

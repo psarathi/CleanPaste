@@ -81,6 +81,9 @@ final class ShelfWindowController: NSObject {
     }
 
     private func wireCallbacks() {
+        appState.targetBundleIDProvider = { [weak self] in
+            self?.previousFrontApp?.bundleIdentifier
+        }
         appState.onRequestToggleShelf = { [weak self] in
             self?.toggle()
         }
