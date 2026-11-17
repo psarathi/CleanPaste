@@ -17,8 +17,8 @@ struct ShelfHeaderBar: View {
             // MARK: Search Button / Inline Search Bar
             searchSection
 
-            // MARK: Filter Chips (shown when searching or non-All filter active)
-            if appState.isSearchVisible || !appState.searchQuery.isEmpty || appState.activeFilter != .all {
+            // MARK: Filter Chips (shown when searching or any filter active)
+            if appState.isSearchVisible || appState.hasActiveFilters {
                 filterChipsSection
                     .transition(.opacity.combined(with: .move(edge: .leading)))
             }
@@ -184,6 +184,58 @@ struct ShelfHeaderBar: View {
                         }
                     }
 
+                    Menu("Filter by Date") {
+                        ForEach(DateFilter.allCases) { dateFilter in
+                            Button {
+                                appState.activeDateFilter = dateFilter
+                            } label: {
+                                HStack {
+                                    Text(dateFilter.rawValue)
+                                    if appState.activeDateFilter == dateFilter {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Menu("Filter by App") {
+                        Button {
+                            appState.activeSourceAppBundleID = nil
+                        } label: {
+                            HStack {
+                                Text("All Apps")
+                                if appState.activeSourceAppBundleID == nil {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        if !appState.availableSourceApps.isEmpty {
+                            Divider()
+                            ForEach(appState.availableSourceApps, id: \.bundleID) { source in
+                                Button {
+                                    appState.activeSourceAppBundleID = source.bundleID
+                                } label: {
+                                    HStack {
+                                        Text(source.name)
+                                        if appState.activeSourceAppBundleID == source.bundleID {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if appState.hasActiveFilters {
+                        Button {
+                            appState.resetAllFilters()
+                            isSearchFocused = false
+                        } label: {
+                            Label("Reset All Filters", systemImage: "xmark.circle")
+                        }
+                    }
+
                     Divider()
 
                     Button(role: .destructive) {
@@ -328,6 +380,113 @@ struct ShelfHeaderBar: View {
                         )
                 }
                 .buttonStyle(.plain)
+            }
+
+            Menu {
+                ForEach(DateFilter.allCases) { dateFilter in
+                    Button {
+                        appState.activeDateFilter = dateFilter
+                    } label: {
+                        HStack {
+                            Text(dateFilter.rawValue)
+                            if appState.activeDateFilter == dateFilter {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 10.5))
+                    Text(appState.activeDateFilter == .anyTime ? "Date" : appState.activeDateFilter.rawValue)
+                        .font(.system(size: 11.5, weight: appState.activeDateFilter == .anyTime ? .medium : .semibold))
+                }
+                .foregroundStyle(appState.activeDateFilter == .anyTime ? Color.secondary : .white)
+                .padding(.horizontal, 8)
+                .frame(height: 24)
+                .background(
+                    Capsule()
+                        .fill(appState.activeDateFilter == .anyTime ? Color.primary.opacity(0.07) : Color.accentColor)
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Filter by Date")
+
+            let activeAppName = appState.activeSourceAppBundleID.flatMap { bid in
+                appState.availableSourceApps.first(where: { $0.bundleID == bid })?.name
+                    ?? bid.components(separatedBy: ".").last
+            }
+            Menu {
+                Button {
+                    appState.activeSourceAppBundleID = nil
+                } label: {
+                    HStack {
+                        Text("All Apps")
+                        if appState.activeSourceAppBundleID == nil {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                if !appState.availableSourceApps.isEmpty {
+                    Divider()
+                    ForEach(appState.availableSourceApps, id: \.bundleID) { source in
+                        Button {
+                            appState.activeSourceAppBundleID = source.bundleID
+                        } label: {
+                            HStack {
+                                Text(source.name)
+                                if appState.activeSourceAppBundleID == source.bundleID {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    if let bid = appState.activeSourceAppBundleID,
+                       let icon = AppColorExtractor.shared.appIcon(for: bid) {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 13, height: 13)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    } else {
+                        Image(systemName: "app.badge")
+                            .font(.system(size: 10.5))
+                    }
+                    Text(activeAppName ?? "App")
+                        .font(.system(size: 11.5, weight: activeAppName == nil ? .medium : .semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(activeAppName == nil ? Color.secondary : .white)
+                .padding(.horizontal, 8)
+                .frame(height: 24)
+                .background(
+                    Capsule()
+                        .fill(activeAppName == nil ? Color.primary.opacity(0.07) : Color.accentColor)
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Filter by Source App")
+
+            if appState.activeFilter != .all || appState.activeDateFilter != .anyTime || appState.activeSourceAppBundleID != nil {
+                Button {
+                    appState.activeFilter = .all
+                    appState.activeDateFilter = .anyTime
+                    appState.activeSourceAppBundleID = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear Filters")
             }
         }
     }

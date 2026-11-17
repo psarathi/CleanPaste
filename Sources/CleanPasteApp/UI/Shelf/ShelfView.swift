@@ -124,19 +124,17 @@ struct ShelfView: View {
     @ViewBuilder
     private var emptyStateView: some View {
         VStack(spacing: 10) {
-            if !appState.searchQuery.isEmpty || appState.activeFilter != .all {
+            if appState.hasActiveFilters {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 28, weight: .light))
                     .foregroundStyle(.secondary)
                 Text("No matching items")
                     .font(.system(size: 15, weight: .semibold))
-                Text("Try clearing your search query or changing the type filter.")
+                Text("Try clearing your search query or changing the active filters.")
                     .font(.system(size: 12.5))
                     .foregroundStyle(.secondary)
                 Button("Reset Search & Filters") {
-                    appState.searchQuery = ""
-                    appState.activeFilter = .all
-                    appState.isSearchVisible = false
+                    appState.resetAllFilters()
                     isSearchFocused = false
                 }
                 .buttonStyle(.bordered)

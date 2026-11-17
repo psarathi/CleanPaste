@@ -23,7 +23,8 @@ let package = Package(
                 .linkedFramework("LinkPresentation"),
                 .linkedFramework("QuickLookThumbnailing"),
                 .linkedFramework("ServiceManagement"),
-                .linkedFramework("UniformTypeIdentifiers")
+                .linkedFramework("UniformTypeIdentifiers"),
+                .linkedFramework("Vision")
             ]
         ),
         .executableTarget(

@@ -47,12 +47,20 @@ struct ClipCardView: View {
                 Spacer(minLength: 4)
 
                 if let appIcon {
-                    Image(nsImage: appIcon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 32, height: 32)
-                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        .shadow(color: .black.opacity(0.22), radius: 3, y: 1)
+                    Button {
+                        if let bid = item.sourceAppBundleID {
+                            appState.activeSourceAppBundleID = (appState.activeSourceAppBundleID == bid) ? nil : bid
+                        }
+                    } label: {
+                        Image(nsImage: appIcon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32, height: 32)
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            .shadow(color: .black.opacity(0.22), radius: 3, y: 1)
+                    }
+                    .buttonStyle(.plain)
+                    .help(item.sourceAppName.map { "Filter by \($0)" } ?? "Filter by source app")
                 } else {
                     ZStack {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
@@ -78,7 +86,7 @@ struct ClipCardView: View {
             )
 
             // MARK: Card Body
-            CardBodyView(item: item, storage: appState.storage)
+            CardBodyView(item: item, storage: appState.storage, searchQuery: appState.searchQuery)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .controlBackgroundColor))
 
@@ -90,6 +98,13 @@ struct ClipCardView: View {
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
+
+                if item.type == .image && item.hasOCRText {
+                    Image(systemName: "doc.text.viewfinder")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .help("Contains searchable OCR text")
+                }
 
                 if item.isSensitiveSecret {
                     Image(systemName: "lock.shield.fill")
@@ -239,6 +254,33 @@ struct ClipCardView: View {
                 Button("HSL (\(color.hslString))") {
                     appState.copyCustomString(color.hslString, label: "HSL")
                 }
+            }
+        }
+
+        if item.type == .image && item.hasOCRText {
+            Button {
+                appState.copyImageOCRText(item)
+            } label: {
+                Label("Copy Text from Image", systemImage: "doc.text.viewfinder")
+            }
+
+            Button {
+                appState.pasteImageOCRText(item)
+            } label: {
+                Label("Paste Text from Image", systemImage: "text.viewfinder")
+            }
+        }
+
+        if let bid = item.sourceAppBundleID {
+            let appLabel = item.sourceAppName ?? "App"
+            let isFiltered = appState.activeSourceAppBundleID == bid
+            Button {
+                appState.activeSourceAppBundleID = isFiltered ? nil : bid
+            } label: {
+                Label(
+                    isFiltered ? "Clear \(appLabel) Filter" : "Filter by \(appLabel)",
+                    systemImage: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+                )
             }
         }
 

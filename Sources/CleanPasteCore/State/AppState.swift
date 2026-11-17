@@ -36,6 +36,16 @@ public final class AppState: ObservableObject {
             ensureValidSelection()
         }
     }
+    @Published public var activeDateFilter: DateFilter = .anyTime {
+        didSet {
+            ensureValidSelection()
+        }
+    }
+    @Published public var activeSourceAppBundleID: String? = nil {
+        didSet {
+            ensureValidSelection()
+        }
+    }
     @Published public var selectedItemID: UUID?
     @Published public var isShelfVisible: Bool = false
     @Published public var isPaused: Bool = false {
@@ -138,8 +148,37 @@ public final class AppState: ObservableObject {
 
     // MARK: - Filtering & Selection
 
+    public var hasActiveFilters: Bool {
+        !searchQuery.isEmpty
+            || activeFilter != .all
+            || activeDateFilter != .anyTime
+            || activeSourceAppBundleID != nil
+    }
+
+    public var availableSourceApps: [(bundleID: String, name: String)] {
+        var seen: [String: String] = [:]
+        for item in items {
+            switch selectedTab {
+            case .history:
+                guard item.isInHistory else { continue }
+            case .pinboard(let id):
+                guard item.pinboardIDs.contains(id) else { continue }
+            }
+            if let bid = item.sourceAppBundleID, !bid.isEmpty {
+                let name = item.sourceAppName ?? bid.components(separatedBy: ".").last ?? bid
+                if seen[bid] == nil {
+                    seen[bid] = name
+                }
+            }
+        }
+        return seen
+            .map { (bundleID: $0.key, name: $0.value) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     public var visibleItems: [ClipItem] {
-        items.filter { item in
+        let now = Date()
+        return items.filter { item in
             switch selectedTab {
             case .history:
                 guard item.isInHistory else { return false }
@@ -147,9 +186,21 @@ public final class AppState: ObservableObject {
                 guard item.pinboardIDs.contains(id) else { return false }
             }
             guard activeFilter.matches(item.type) else { return false }
+            guard activeDateFilter.matches(item.timestamp, relativeTo: now) else { return false }
+            if let appFilter = activeSourceAppBundleID {
+                guard item.sourceAppBundleID == appFilter else { return false }
+            }
             guard item.matchesSearch(searchQuery) else { return false }
             return true
         }
+    }
+
+    public func resetAllFilters() {
+        searchQuery = ""
+        activeFilter = .all
+        activeDateFilter = .anyTime
+        activeSourceAppBundleID = nil
+        isSearchVisible = false
     }
 
     public var selectedItem: ClipItem? {
@@ -257,6 +308,15 @@ public final class AppState: ObservableObject {
             let itemID = newItem.id
             LinkPreviewService.shared.generateFileThumbnail(for: firstPath, itemID: itemID, storage: storage) { [weak self] _ in
                 self?.objectWillChange.send()
+            }
+        } else if newItem.type == .image, let imageData = payload.imageData, backgroundServicesEnabled {
+            let itemID = newItem.id
+            Task { [weak self] in
+                let recognized = await ImageOCRService.recognizeText(from: imageData)
+                guard let self, let recognized, !recognized.isEmpty,
+                      let idx = self.items.firstIndex(where: { $0.id == itemID }) else { return }
+                self.items[idx].ocrText = recognized
+                self.persist()
             }
         }
 
@@ -387,6 +447,31 @@ public final class AppState: ObservableObject {
         PasteService.shared.writeCustomString(text, monitor: monitor)
         SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
         showToast("Copied \(label)")
+    }
+
+    public func copyImageOCRText(_ item: ClipItem) {
+        guard let ocr = item.ocrText?.trimmingCharacters(in: .whitespacesAndNewlines), !ocr.isEmpty else { return }
+        PasteService.shared.writeCustomString(ocr, monitor: monitor)
+        SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
+        showToast("Copied Text from Image")
+    }
+
+    public func pasteImageOCRText(_ item: ClipItem) {
+        guard let ocr = item.ocrText?.trimmingCharacters(in: .whitespacesAndNewlines), !ocr.isEmpty else { return }
+        let targetBundleID = targetBundleIDProvider?()
+        let sanitized = PasteService.sanitizedTextForTarget(
+            ocr,
+            targetBundleID: targetBundleID,
+            terminalSafePaste: settings.terminalSafePaste
+        )
+        PasteService.shared.writeCustomString(sanitized.text, monitor: monitor)
+        SoundManager.shared.play(.paste, enabled: settings.soundEffectsEnabled)
+        refreshAccessibilityStatus()
+        let shouldCmdV = settings.directPaste && accessibilityGranted
+        if !shouldCmdV {
+            showToast("Copied Text from Image")
+        }
+        onRequestDismissAndPaste?(shouldCmdV)
     }
 
     public func quickPaste(index: Int, plainTextOnly: Bool = false) {

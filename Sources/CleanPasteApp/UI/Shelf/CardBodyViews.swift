@@ -5,15 +5,16 @@ import CleanPasteCore
 struct CardBodyView: View {
     let item: ClipItem
     let storage: StorageManager
+    var searchQuery: String = ""
 
     var body: some View {
         switch item.type {
         case .text:
-            TextCardBody(item: item, storage: storage)
+            TextCardBody(item: item, storage: storage, searchQuery: searchQuery)
         case .link:
-            LinkCardBody(item: item, storage: storage)
+            LinkCardBody(item: item, storage: storage, searchQuery: searchQuery)
         case .image:
-            ImageCardBody(item: item, storage: storage)
+            ImageCardBody(item: item, storage: storage, searchQuery: searchQuery)
         case .color:
             ColorCardBody(item: item)
         case .file:
@@ -22,26 +23,49 @@ struct CardBodyView: View {
     }
 }
 
+private func highlightedAttributedString(_ text: String, query: String) -> AttributedString {
+    var attr = AttributedString(text)
+    let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !q.isEmpty else { return attr }
+
+    var searchStart = text.startIndex
+    while searchStart < text.endIndex,
+          let range = text.range(of: q, options: [.caseInsensitive, .diacriticInsensitive], range: searchStart..<text.endIndex) {
+        if let lower = AttributedString.Index(range.lowerBound, within: attr),
+           let upper = AttributedString.Index(range.upperBound, within: attr) {
+            attr[lower..<upper].backgroundColor = Color.yellow.opacity(0.42)
+            attr[lower..<upper].foregroundColor = Color.primary
+        }
+        searchStart = range.upperBound
+    }
+    return attr
+}
+
 private struct TextCardBody: View {
     let item: ClipItem
     let storage: StorageManager
+    let searchQuery: String
     @State private var revealSecret: Bool = false
 
     var body: some View {
         let content = item.textContent ?? ""
         let shouldMask = item.isSensitiveSecret && !revealSecret
+        let displayString = highlightedAttributedString(
+            previewSnippet(content),
+            query: shouldMask ? "" : searchQuery
+        )
 
         ZStack(alignment: .topLeading) {
             Group {
                 if item.looksLikeCode || item.isSensitiveSecret {
-                    Text(previewSnippet(content))
+                    Text(displayString)
                         .font(.system(size: 11.5, weight: .regular, design: .monospaced))
                         .foregroundStyle(.primary.opacity(0.92))
                         .lineSpacing(2.5)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 } else {
-                    Text(previewSnippet(content))
+                    Text(displayString)
                         .font(.system(size: 12.5, weight: .regular))
                         .foregroundStyle(.primary.opacity(0.92))
                         .lineSpacing(3)
@@ -99,6 +123,7 @@ private struct TextCardBody: View {
 private struct LinkCardBody: View {
     let item: ClipItem
     let storage: StorageManager
+    let searchQuery: String
 
     var body: some View {
         let previewImg = item.hasLinkPreviewImage ? storage.loadLinkPreviewImage(for: item.id) : nil
@@ -138,7 +163,7 @@ private struct LinkCardBody: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(host)
+                        Text(highlightedAttributedString(host, query: searchQuery))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -163,7 +188,7 @@ private struct LinkCardBody: View {
                             .clipShape(RoundedRectangle(cornerRadius: 3))
                             .padding(.top, 1)
                     }
-                    Text(title)
+                    Text(highlightedAttributedString(title, query: searchQuery))
                         .font(.system(size: 12.5, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(previewImg != nil ? 2 : 3)
@@ -173,7 +198,7 @@ private struct LinkCardBody: View {
 
             Spacer(minLength: 0)
 
-            Text(urlDisplay)
+            Text(highlightedAttributedString(urlDisplay, query: searchQuery))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .lineLimit(previewImg != nil ? 1 : 2)
@@ -188,10 +213,13 @@ private struct LinkCardBody: View {
 private struct ImageCardBody: View {
     let item: ClipItem
     let storage: StorageManager
+    let searchQuery: String
 
     var body: some View {
         let thumb = storage.loadThumbnail(for: item.id)
-        ZStack {
+        let matchingOCRLine = matchingOCRPreviewLine
+
+        ZStack(alignment: .bottom) {
             CheckerboardBackground()
                 .opacity(0.35)
 
@@ -211,9 +239,31 @@ private struct ImageCardBody: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if let matchingOCRLine {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.viewfinder")
+                        .font(.system(size: 9.5, weight: .semibold))
+                    Text(highlightedAttributedString(matchingOCRLine, query: searchQuery))
+                        .font(.system(size: 10.5))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.regularMaterial, in: Capsule())
+                .padding(6)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+    }
+
+    private var matchingOCRPreviewLine: String? {
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty, let ocr = item.ocrText else { return nil }
+        let lines = ocr.components(separatedBy: .newlines)
+        return lines.first { $0.localizedCaseInsensitiveContains(q) }
     }
 }
 

@@ -18,6 +18,8 @@ A native macOS clipboard manager built with SwiftUI and AppKit, featuring a fros
 - **Quick Look & Editing:** Press `Space` to preview any clip (`⌘E` to edit text, `⌘R` to rename, `⌫` to delete with `⌘Z` undo).
 - **Direct Paste & Terminal Safety:** Supports optional single-click direct paste (in addition to `Return`, `⌘1–9`, and double-click) plus **Terminal-safe paste**, stripping trailing `\r`/`\n` when pasting into Terminal, iTerm2, Warp, WezTerm, Alacritty, kitty, Ghostty, or Hyper.
 - **Privacy, Secret Masking & Timed Pause:** Skips concealed/transient password-manager clipboard types (`org.nspasteboard.ConcealedType`, `TransientType`, etc.), detects API keys/tokens/JWTs/PEM keys (`Mask Preview`, `Ignore & Skip`, or `Off`), supports an excluded-apps list, and lets you pause recording indefinitely or for **15 minutes / 1 hour** with automatic resume.
+- **Vision Image OCR & Search:** Automatically runs on-device Apple Vision text recognition (`VNRecognizeTextRequest`) on captured images so text inside screenshots is searchable alongside text clips, with an OCR match pill and **Copy Text from Image** / **Paste Text from Image** actions.
+- **App & Date Filters + Match Highlighting:** Narrow the shelf by source app (via the filter bar, overflow menu, card context menu, or clicking a card's header app icon) and date (`Today`, `Last 7 Days`, `Last 30 Days`), with live case-insensitive search highlighting.
 - **Menu Bar Icon Switcher:** Includes 7 selectable menu bar icon styles (`PasteBoard`, `Coral Cards`, `Spectrum Fan`, `Sapphire Mini`, `Teal Clipboard`, `Indigo & Cyan`, and `Monochrome`).
 
 ## Requirements

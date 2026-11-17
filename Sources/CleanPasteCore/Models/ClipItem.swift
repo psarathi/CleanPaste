@@ -160,6 +160,7 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
     public var pinboardIDs: [UUID]
     public var isSensitiveSecret: Bool
     public var secretKind: String?
+    public var ocrText: String?
 
     public init(
         id: UUID = UUID(),
@@ -187,7 +188,8 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
         isInHistory: Bool = true,
         pinboardIDs: [UUID] = [],
         isSensitiveSecret: Bool = false,
-        secretKind: String? = nil
+        secretKind: String? = nil,
+        ocrText: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -215,6 +217,7 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
         self.pinboardIDs = pinboardIDs
         self.isSensitiveSecret = isSensitiveSecret
         self.secretKind = secretKind
+        self.ocrText = ocrText
     }
 
     public init(from decoder: Decoder) throws {
@@ -245,6 +248,11 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
         self.pinboardIDs = try container.decodeIfPresent([UUID].self, forKey: .pinboardIDs) ?? []
         self.isSensitiveSecret = try container.decodeIfPresent(Bool.self, forKey: .isSensitiveSecret) ?? false
         self.secretKind = try container.decodeIfPresent(String.self, forKey: .secretKind)
+        self.ocrText = try container.decodeIfPresent(String.self, forKey: .ocrText)
+    }
+
+    public var hasOCRText: Bool {
+        !(ocrText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
     }
 
     public var hasDynamicPlaceholders: Bool {
@@ -340,6 +348,7 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
         let fields: [String?] = [
             customTitle,
             textContent,
+            ocrText,
             urlString,
             linkTitle,
             linkDescription,
@@ -360,6 +369,30 @@ public struct ClipItem: Identifiable, Codable, Hashable, Sendable {
             }
         }
         return false
+    }
+}
+
+public enum DateFilter: String, CaseIterable, Identifiable, Sendable {
+    case anyTime = "Any Time"
+    case today = "Today"
+    case last7Days = "Last 7 Days"
+    case last30Days = "Last 30 Days"
+
+    public var id: String { rawValue }
+
+    public func matches(_ date: Date, relativeTo now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        switch self {
+        case .anyTime:
+            return true
+        case .today:
+            return calendar.isDate(date, inSameDayAs: now)
+        case .last7Days:
+            guard let cutoff = calendar.date(byAdding: .day, value: -7, to: now) else { return true }
+            return date >= cutoff
+        case .last30Days:
+            guard let cutoff = calendar.date(byAdding: .day, value: -30, to: now) else { return true }
+            return date >= cutoff
+        }
     }
 }
 

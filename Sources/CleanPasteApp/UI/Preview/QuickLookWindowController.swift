@@ -92,6 +92,7 @@ struct QuickLookPreviewView: View {
     var onClose: () -> Void
     @State private var forceMonospace: Bool = false
     @State private var revealSecret: Bool = false
+    @State private var showImageOCR: Bool = false
 
     var body: some View {
         if let item = appState.selectedItem {
@@ -129,6 +130,19 @@ struct QuickLookPreviewView: View {
                         }
                         .buttonStyle(.plain)
                         .help(revealSecret ? "Mask Secret" : "Reveal Secret")
+                    }
+                    if item.type == .image && item.hasOCRText {
+                        Button {
+                            showImageOCR.toggle()
+                        } label: {
+                            Image(systemName: "doc.text.viewfinder")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(6)
+                                .background(Circle().fill(.white.opacity(showImageOCR ? 0.30 : 0.14)))
+                        }
+                        .buttonStyle(.plain)
+                        .help(showImageOCR ? "Hide Extracted Text" : "Show Extracted Text (OCR)")
                     }
                     if item.type == .text {
                         Button {
@@ -202,6 +216,14 @@ struct QuickLookPreviewView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+
+                        if item.hasOCRText {
+                            Button("Copy Text") {
+                                appState.copyImageOCRText(item)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
                     }
                     if item.type == .link, let urlStr = item.urlString, let url = URL(string: urlStr) {
                         Button("Open in Browser") {
@@ -251,6 +273,7 @@ struct QuickLookPreviewView: View {
             .shadow(color: .black.opacity(0.32), radius: 22, y: 10)
             .onChange(of: item.id) { _, _ in
                 revealSecret = false
+                showImageOCR = false
             }
         }
     }
@@ -297,14 +320,30 @@ struct QuickLookPreviewView: View {
 
         case .image:
             let fullImage = appState.storage.loadFullImage(for: item.id)
-            ZStack {
-                CheckerboardBackground(squareSize: 12)
-                    .opacity(0.35)
-                if let fullImage {
-                    Image(nsImage: fullImage)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(14)
+            VStack(spacing: 0) {
+                ZStack {
+                    CheckerboardBackground(squareSize: 12)
+                        .opacity(0.35)
+                    if let fullImage {
+                        Image(nsImage: fullImage)
+                            .resizable()
+                            .scaledToFit()
+                            .padding(14)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if showImageOCR, let ocr = item.ocrText, !ocr.isEmpty {
+                    Divider()
+                    ScrollView {
+                        Text(ocr)
+                            .font(.system(size: 12, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(12)
+                    }
+                    .frame(height: 110)
+                    .background(Color(nsColor: .textBackgroundColor))
                 }
             }
 

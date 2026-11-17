@@ -373,8 +373,8 @@ final class ShelfWindowController: NSObject {
                 appState.searchQuery = ""
                 return nil
             }
-            if appState.isSearchVisible || isSearchFocusedStorage {
-                appState.isSearchVisible = false
+            if appState.isSearchVisible || isSearchFocusedStorage || appState.hasActiveFilters {
+                appState.resetAllFilters()
                 updateSearchFocus(false)
                 return nil
             }
