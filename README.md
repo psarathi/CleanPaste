@@ -35,7 +35,8 @@ Build the standalone `.app` bundle and run unit tests:
 # Run unit tests
 swift test
 
-# Build, bundle, and ad-hoc sign build/CleanPaste.app
+# Build, bundle, and sign build/CleanPaste.app
+# (Auto-detects an Apple Development certificate in Keychain, or falls back to ad-hoc signing)
 ./scripts/build_app.sh
 
 # Install to /Applications and launch
@@ -48,7 +49,7 @@ open /Applications/CleanPaste.app
 
 For **Direct Paste** (automatically sending `⌘V` into the active app) and **Paste Stack auto-advance**, grant Accessibility access to `/Applications/CleanPaste.app` in **System Settings → Privacy & Security → Accessibility**.
 
-> **Note for local ad-hoc builds:** When rebuilding an ad-hoc-signed app (`codesign --sign -`), macOS TCC binds trust to the previous build's CDHash. Remove (`−`) the old `CleanPaste` entry in Accessibility Settings and re-add the rebuilt app bundle.
+> **Tip — Preserve Accessibility permission across rebuilds:** `scripts/build_app.sh` automatically signs `CleanPaste.app` with your Keychain's **Apple Development** certificate if present (replaceable via `CODESIGN_IDENTITY`), which gives the app a stable Designated Requirement so macOS keeps Accessibility permission across rebuilds. You can create a free certificate in **Xcode → Settings → Accounts → Manage Certificates… → `+` → Apple Development**. If no certificate is found, `build_app.sh` falls back to ad-hoc signing (`codesign --sign -`), which requires removing (`−`) and re-adding (`+`) `CleanPaste.app` in Accessibility Settings after each rebuild.
 
 ## Default Shortcuts
 
