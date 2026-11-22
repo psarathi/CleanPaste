@@ -21,13 +21,11 @@ echo "Packaging CleanPaste.app..."
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$BIN_PATH" "$MACOS_DIR/CleanPaste"
+strip -S -x "$MACOS_DIR/CleanPaste"
 cp "$ROOT_DIR/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 cp "$ROOT_DIR/Resources/MenuBarIcon.png" "$RESOURCES_DIR/MenuBarIcon.png"
 cp "$ROOT_DIR/Resources/MenuBarIcon@2x.png" "$RESOURCES_DIR/MenuBarIcon@2x.png"
-if [ -d "$BUILD_BIN_DIR/CleanPaste_CleanPaste.bundle" ]; then
-    cp -R "$BUILD_BIN_DIR/CleanPaste_CleanPaste.bundle" "$RESOURCES_DIR/"
-fi
 
 SIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
 if [ -z "$SIGN_IDENTITY" ]; then

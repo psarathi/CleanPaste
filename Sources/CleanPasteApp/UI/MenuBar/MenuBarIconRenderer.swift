@@ -29,12 +29,6 @@ enum MenuBarIconRenderer {
             copy.isTemplate = false
             return copy
         }
-        if let modImg = Bundle.module.image(forResource: "MenuBarIcon") {
-            let copy = modImg.copy() as? NSImage ?? modImg
-            copy.size = NSSize(width: size, height: size)
-            copy.isTemplate = false
-            return copy
-        }
         // Fallback matching PasteBoard's pink-purple clipboard gradient
         return drawClipboard(
             size: size,

@@ -25,11 +25,21 @@ A native macOS clipboard manager built with SwiftUI and AppKit, featuring a fros
 ## Requirements
 
 - macOS 14.0+
-- Xcode / Swift 6 toolchain
+- Xcode / Swift 6 toolchain *(only required when building from source)*
 
-## Building & Running
+## Download & Install (`.dmg`)
 
-Build the standalone `.app` bundle and run unit tests:
+1. Download **`CleanPaste.dmg`** from the latest [GitHub Release](https://github.com/psarathi/CleanPaste/releases/latest).
+2. Open `CleanPaste.dmg` and drag **CleanPaste.app** into **Applications**.
+3. Because the release `.dmg` is ad-hoc signed without paid Apple notarization, clear the macOS quarantine attribute before first launch:
+   ```bash
+   xattr -cr /Applications/CleanPaste.app
+   open /Applications/CleanPaste.app
+   ```
+
+## Building from Source
+
+Build the standalone `.app` bundle (or redistributable `.dmg`) and run unit tests:
 
 ```bash
 # Run unit tests
@@ -38,6 +48,9 @@ swift test
 # Build, bundle, and sign build/CleanPaste.app
 # (Auto-detects an Apple Development certificate in Keychain, or falls back to ad-hoc signing)
 ./scripts/build_app.sh
+
+# Or build a redistributable, privacy-audited build/CleanPaste.dmg (always ad-hoc signed by default)
+./scripts/build_dmg.sh
 
 # Install to /Applications and launch
 rm -rf /Applications/CleanPaste.app

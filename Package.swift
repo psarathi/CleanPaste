@@ -31,8 +31,8 @@ let package = Package(
             name: "CleanPaste",
             dependencies: ["CleanPasteCore"],
             path: "Sources/CleanPasteApp",
-            resources: [
-                .process("Resources")
+            exclude: [
+                "Resources"
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v5)
